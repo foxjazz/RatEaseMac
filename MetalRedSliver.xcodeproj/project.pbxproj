@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		EE1057792DCEBD58003E3D9C /* MetalCaptureView.bak.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1057782DCEBD58003E3D9C /* MetalCaptureView.bak.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		EE1057512DCEA7BC003E3D9C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		EE1057402DCEA7BB003E3D9C /* MetalRedSliver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetalRedSliver.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE1057502DCEA7BC003E3D9C /* MetalRedSliverTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetalRedSliverTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE10575A2DCEA7BC003E3D9C /* MetalRedSliverUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetalRedSliverUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE1057782DCEBD58003E3D9C /* MetalCaptureView.bak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalCaptureView.bak.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -79,6 +84,7 @@
 				EE1057532DCEA7BC003E3D9C /* MetalRedSliverTests */,
 				EE10575D2DCEA7BC003E3D9C /* MetalRedSliverUITests */,
 				EE1057412DCEA7BB003E3D9C /* Products */,
+				EE1057782DCEBD58003E3D9C /* MetalCaptureView.bak.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -236,6 +242,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EE1057792DCEBD58003E3D9C /* MetalCaptureView.bak.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -395,6 +402,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MetalRedSliver/MetalRedSliver.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -423,6 +431,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MetalRedSliver/MetalRedSliver.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;

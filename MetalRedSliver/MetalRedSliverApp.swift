@@ -30,3 +30,4 @@ struct MetalRedSliverApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+
