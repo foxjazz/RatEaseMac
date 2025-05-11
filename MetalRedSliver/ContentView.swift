@@ -14,7 +14,7 @@ struct ContentView: View {
     
     @StateObject private var captureManager = ScreenCaptureManager()
     @State private var capturedImage: NSImage? = nil
-    @State private var xPosition: CGFloat = 500
+
     @State private var errors: [String] = []
     //@State public var winTitles: [String] = []
     //@State public var selectedTitle : String = "None"
@@ -34,14 +34,20 @@ struct ContentView: View {
                 Text("RectWidth = \(captureManager.RectWidth)")
                 Text("RectHeight = \(captureManager.RectHeight)")
                 if let cgImage = captureManager.capturedImage {
+                    Text("Captured image dimensions: \(cgImage.width) x \(cgImage.height)")
                     let nsImage = NSImage(cgImage: cgImage, size: .zero) // ✅ Convert CGImage to NSImage
                     
                     Image(nsImage: nsImage)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 100, height: 800)
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 30, height: 800)
+     
                 } else {
                     Text("No image yet.")
+                    Color.gray // Placeholder while waiting for the actual image
+                           .frame(width: 30, height: 800)
+                           .cornerRadius(8)
+                           .overlay(Text("No image yet").foregroundColor(.white))
                 }
                 
             }
@@ -69,15 +75,17 @@ struct ContentView: View {
                     in: 0...Double(captureManager.RectMaxWidth)
                             )
                     .padding()
+                    
                 Text("Top")
                 Slider(
                     value: Binding(
                         get: { Double(captureManager.RectTop) },
                         set: { captureManager.RectTop = Int($0) }
                     ),
-                    in: 0...Double(captureManager.RectMaxHeight / 4)
-                            )
+                    in: 0...Double(captureManager.RectMaxHeight)
+                    )
                     .padding()
+                    
                 Text("Height")
                     Slider(
                         value: Binding(
@@ -87,6 +95,7 @@ struct ContentView: View {
                         in: 0...Double(captureManager.RectMaxHeight)
                                 )
                         .padding()
+                        
                 Text("Width  should be < 10")
                     Slider(
                         value: Binding(
@@ -96,14 +105,35 @@ struct ContentView: View {
                         in: 0...60
                                 )
                         .padding()
-                Button("Check Capture") {
-                    Task{
-                        do {
-                            try await captureManager.captureSliver(xPos: 100)
-                        } catch {
-                            print("❌ Capture error: \(error)")
+                        
+                HStack{
+                    Button("Check Capture") {
+                        Task{
+                            do {
+                                try await captureManager.captureSliver(xPos: 100)
+                            } catch {
+                                print("❌ Capture error: \(error)")
+                            }
                         }
                     }
+                    Button("Update Image Rectangle"){
+                        
+                        Task{
+                            await captureManager.updateSliverRect()
+                        }
+                        
+                    }
+                    Button("stop capture"){
+                        Task{
+                            try await captureManager.stream?.stopCapture()
+                        }
+                    }
+                    Button("crop = \(captureManager.shouldCrop ? "true" : "false")"){
+                        captureManager.shouldCrop.toggle()
+                    }
+                }.padding()
+                ForEach(captureManager.infoMessages, id: \.self) { msg in
+                    Text(msg).tag(msg)
                 }
                 
             }
@@ -111,8 +141,8 @@ struct ContentView: View {
         .onAppear {
             Task{
                 do{
-                    //try await captureManager.populateWindowTitles()
-                    try await captureManager.simPopTitles()
+                    try await captureManager.populateWindowTitles()
+                    //try await captureManager.simPopTitles()
                 }
                 catch{print("X onAppear error")}
                 isTitlesExpanded = true
@@ -123,6 +153,7 @@ struct ContentView: View {
     }
     
 }
+
 func nsImage(from cgImage: CGImage) -> NSImage {
     let size = NSSize(width: cgImage.width, height: cgImage.height)
     return NSImage(cgImage: cgImage, size: size)
