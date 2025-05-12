@@ -22,25 +22,49 @@ struct ContentView: View {
     @State var disableInput = false
     @State var isUnauthorized = false
     @State private var isTitlesExpanded = false
+    @State private var lastPlayTime = Date.distantPast
     
     var body: some View {
+        
         HStack{
             
             VStack {
-                Text("Screen Area Info")
-                    .font(.title)
-                Text("RectLeft = \(captureManager.RectLeft)")
-                Text("RectTop = \(captureManager.RectTop)")
-                Text("RectWidth = \(captureManager.RectWidth)")
-                Text("RectHeight = \(captureManager.RectHeight)")
+                HStack{
+                    Text("Capture Status")
+                        .font(.title)
+                    if (captureManager.captureIsActive ){
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 20, height: 20)
+                        
+                    }else{
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 20, height: 20)
+                    }
+                            
+                    
+                }.padding()
+                HStack{
+                    Text("RectLeft = \(captureManager.RectLeft)")
+                    Text("RectTop = \(captureManager.RectTop)")
+                }.padding()
+                HStack{
+                    Text("RectWidth = \(captureManager.RectWidth)")
+                    Text("RectHeight = \(captureManager.RectHeight)")
+                }.padding()
                 if let cgImage = captureManager.capturedImage {
                     Text("Captured image dimensions: \(cgImage.width) x \(cgImage.height)")
                     let nsImage = NSImage(cgImage: cgImage, size: .zero) // ✅ Convert CGImage to NSImage
                     
+//                    Image(nsImage: nsImage)
+//                        .resizable()
+//                        .aspectRatio(contentMode: .fill)
+//                        .frame(width: 30, height: 800)
                     Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 30, height: 800)
+                        .interpolation(.none) // Optional: prevent smoothing
+                        .frame(width: CGFloat(cgImage.width), height: CGFloat(cgImage.height))
+                    Text( "image-size : width: \(cgImage.width), height: \(cgImage.height)")
      
                 } else {
                     Text("No image yet.")
@@ -110,7 +134,7 @@ struct ContentView: View {
                     Button("Check Capture") {
                         Task{
                             do {
-                                try await captureManager.captureSliver(xPos: 100)
+                                try await captureManager.captureSliver(x: captureManager.RectLeft, y: captureManager.RectTop, width: captureManager.RectWidth, height: captureManager.RectHeight)
                             } catch {
                                 print("❌ Capture error: \(error)")
                             }
@@ -119,14 +143,15 @@ struct ContentView: View {
                     Button("Update Image Rectangle"){
                         
                         Task{
-                            await captureManager.updateSliverRect()
+                            try await captureManager.stream?.stopCapture()
+                            captureManager.captureIsActive = false
+                            try await captureManager.captureSliver(x: captureManager.RectLeft, y: captureManager.RectTop, width: captureManager.RectWidth, height: captureManager.RectHeight)
                         }
                         
                     }
-                    Button("stop capture"){
-                        Task{
-                            try await captureManager.stream?.stopCapture()
-                        }
+                    Button("Save settings"){
+                        captureManager.persistSettings()
+                        
                     }
                     Button("crop = \(captureManager.shouldCrop ? "true" : "false")"){
                         captureManager.shouldCrop.toggle()
@@ -135,13 +160,23 @@ struct ContentView: View {
                 ForEach(captureManager.infoMessages, id: \.self) { msg in
                     Text(msg).tag(msg)
                 }
+                ForEach(captureManager.infoSize, id: \.self){msg in
+                    Text(msg).tag(msg)
+                }
                 
             }
         }
         .onAppear {
             Task{
                 do{
-                    try await captureManager.populateWindowTitles()
+                    captureManager.restoreSettings()
+                    let title = captureManager.selectedTitle
+                    if title.isEmpty || title == "none"{
+                        try await captureManager.populateWindowTitles()
+                    }
+                    else {
+                        try await captureManager.captureSliver(x: captureManager.RectLeft, y: captureManager.RectTop, width: captureManager.RectWidth, height: captureManager.RectHeight)
+                    }
                     //try await captureManager.simPopTitles()
                 }
                 catch{print("X onAppear error")}
@@ -149,10 +184,17 @@ struct ContentView: View {
             }
            
         }
+        .onReceive(captureManager.$redDetected) { isRed in
+            let now = Date()
+            if (isRed && now.timeIntervalSince(lastPlayTime) >= 10) {
+                NSSound(named: NSSound.Name("Submarine"))?.play()
+            }
+        }
     
-    }
+        
+    } //body view
     
-}
+}  //content view
 
 func nsImage(from cgImage: CGImage) -> NSImage {
     let size = NSSize(width: cgImage.width, height: cgImage.height)

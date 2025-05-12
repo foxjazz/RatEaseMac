@@ -11,5 +11,18 @@ extension Array where Element: Equatable {
         if !self.contains(item) {
             self.append(item)
         }
+       
     }
 }
+extension Array where Element: Equatable {
+    mutating func appendQueue(_ item: Element) {
+        if !self.contains(item) {
+            self.append(item)
+        }
+        if (self.count > 10)
+        {
+            self.removeFirst()
+        }
+    }
+}
+

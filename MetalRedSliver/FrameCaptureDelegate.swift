@@ -11,7 +11,10 @@ import CoreImage
 
 class FrameCaptureDelegate: NSObject, SCStreamOutput, SCStreamDelegate {
     /// Called whenever a new sample buffer arrives
-    
+//    protocol FrameCaptureDelegateListener: AnyObject {
+//        func didDetectRedPixel()
+//    }
+//    weak var listener: FrameCaptureDelegateListener?
     
     let cropSettings: CropSettings
     init(cropSettings: CropSettings) {
@@ -33,8 +36,8 @@ class FrameCaptureDelegate: NSObject, SCStreamOutput, SCStreamDelegate {
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let context = CIContext()
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
-
-                if cropSettings.shouldCrop {
+        //containsRedPixels(in: cgImage)
+                if cropSettings.Crop {
                     let cropRect = CGRect(
                         x: cropSettings.x,
                         y: cropSettings.y,
@@ -46,10 +49,13 @@ class FrameCaptureDelegate: NSObject, SCStreamOutput, SCStreamDelegate {
                         onImage?(cropped)
                     } else {
                         print("❌ Failed to crop")
-                        onImage?(cgImage)
+                     
                     }
                 } else {
-                    onImage?(cgImage)
+                    DispatchQueue.main.async {
+                                self.onImage?(cgImage)
+                            }
+                    //onImage?(cgImage)
                 }
         
         // Stop after one frame
@@ -62,16 +68,18 @@ class FrameCaptureDelegate: NSObject, SCStreamOutput, SCStreamDelegate {
        
     }
     
-
+    
     
     var onImage: ((CGImage) -> Void)?
     /// Closure for handing the captured image back
     //var onImage: ((CGImage) -> Void)?
 }
+
 struct CropSettings {
     var x: Int
     var y: Int
     var width: Int
     var height: Int
-    var shouldCrop: Bool
+    var Crop: Bool
 }
+

@@ -9,6 +9,7 @@ import ScreenCaptureKit
 import CoreGraphics
 import AVFoundation
 
+
 @MainActor
 class ScreenCaptureManager : ObservableObject {
     @Published var capturedImage: CGImage?
@@ -16,14 +17,16 @@ class ScreenCaptureManager : ObservableObject {
     @Published var winTitles: [String] = []
     @Published var selectedTitle : String = "none"
     
-    @Published var shouldCrop: Bool = false
+    @Published var redDetected: Bool = false
+    @Published var shouldCrop: Bool = true
     @Published var RectLeft: Int = 1
     @Published var RectTop: Int = 1
     @Published var RectHeight: Int = 700
     @Published var RectWidth: Int = 6
     @Published var RectMaxHeight: Int = 800
     @Published var RectMaxWidth: Int = 60
-    
+    @Published var infoSize: [String] = []
+    @Published var captureIsActive: Bool = false
     let isAudioCaptureEnabled = false;
     let isAppAudioExcluded = true;
     var lm_streamConfig :SCStreamConfiguration? = nil
@@ -31,13 +34,14 @@ class ScreenCaptureManager : ObservableObject {
     var stream: SCStream?
     var frameDelegate: FrameCaptureDelegate? = nil
     
-    private var streamConfiguration: SCStreamConfiguration {
+    private var streamConfiguration : SCStreamConfiguration
+    {
         
         let streamConfig = SCStreamConfiguration()
-        let x = RectLeft
-        let y = RectTop
-        let width = RectWidth
-        let height = RectHeight
+        let x = 0
+        let y = 0
+        let width = RectMaxWidth
+        let height = RectMaxHeight
         streamConfig.sourceRect = CGRect(x: x, y: y, width: width, height: height)
         // Configure audio capture.
         streamConfig.capturesAudio = isAudioCaptureEnabled
@@ -63,15 +67,10 @@ class ScreenCaptureManager : ObservableObject {
     func populateWindowTitles() async throws{
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            
             let windows = content.windows
             var titleList: [String] = []
-            
             for window in windows {
                 titleList.appendUnique("\(window.title ?? "blank")")
-//                DispatchQueue.main.async {
-//                    self.winTitles.appendUnique("\(window.title ?? "blank")")
-//                }
             }
             DispatchQueue.main.async {
                 self.winTitles = titleList
@@ -81,6 +80,24 @@ class ScreenCaptureManager : ObservableObject {
             print("populatewindowtitles error function")
         }
     }
+    private func setInfoSize(s : String){
+        DispatchQueue.main.async {
+            self.infoSize.appendQueue(s)
+        }
+    }
+    
+    private func setInfo(msg: String){
+        DispatchQueue.main.async{
+
+            self.infoMessages.appendQueue(msg)
+        }
+    }
+    private func setCaptureStatus(status: Bool){
+        self.captureIsActive = status
+    }
+    /* ******************************************************************
+     *********************  Wire up MaxFrame size ****************************
+     ********************************************************************/
     func bubbleUpMaxFrame() async throws{
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let targetWindow = content.windows.first(where: { $0.title == selectedTitle }) else {
@@ -92,6 +109,9 @@ class ScreenCaptureManager : ObservableObject {
         RectMaxHeight = Int(targetWindow.frame.height)
         RectMaxWidth = Int(targetWindow.frame.width)
     }
+    /* ******************************************************************
+     *********************  Update Rectangle ****************************
+     ********************************************************************/
     func updateSliverRect() async {
         do {
             let streamConfiguration = SCStreamConfiguration()
@@ -100,58 +120,38 @@ class ScreenCaptureManager : ObservableObject {
             let width = RectWidth
             let height = RectHeight
             streamConfiguration.sourceRect = CGRect(x: x, y: y, width: width, height: height)
-            
+            setInfoSize(s: "updateSliver :: rect: x: \(x), y: \(y), width: \(width), height: \(height)")
             try await self.stream?.stopCapture()
+            setCaptureStatus(status: false)
+//            guard let fd = self.frameDelegate else {print ("Error on update"); return}
+//            fd.onImage = { image in
+//                    print("🖼 Updated Captured Image Size: \(image.width) x \(image.height)")
+//                    self.setCaptureStatus(status: true)
+//                    self.setInfoSize(s: "freamDelegate.onImage ## width: \(image.width), height: \(image.height)")
+//                    self.capturedImage = image
+//                    let hasRed = self.containsRedPixels(in: image)
+//                        DispatchQueue.main.async {
+//                            self.redDetected = hasRed
+//                        }
+//                }
+//            
+//            
+//            try self.stream?.addStreamOutput(
+//                fd,
+//                type: .screen,
+//                sampleHandlerQueue: .main
+//            )
             try await self.stream?.updateConfiguration(streamConfiguration)
             try await self.stream?.startCapture()
+           // try await self.captureSliver(x: x, y: y, width: width, height: height)
         }catch {return}
-        /*
-        infoMessages.removeAll()
-        if let oldStream = self.stream {
-                do {
-                    try await oldStream.stopCapture()
-                    try? oldStream.removeStreamOutput(self.frameDelegate!, type: .screen)
-                    
-                    infoMessages.append("Stream stopped")
-                } catch {
-                    infoMessages.append("Failed to stop existing stream: \(error.localizedDescription)")
-                }
-        }
         
-        
-        do {
-            guard let selectedWindow = self.selectedWindow else {
-                        infoMessages.append("No selected window.")
-                        return
-                    }
-            let filter = SCContentFilter(desktopIndependentWindow: selectedWindow)
-            if self.frameDelegate == nil {
-                let delegate = FrameCaptureDelegate()
-                delegate.onImage = { image in
-                    print("🖼 Updating Captured Image Size: \(image.width) x \(image.height)")
-                    self.capturedImage = image
-                }
-                self.frameDelegate = delegate
-                let newConfig = self.streamConfiguration
-                     newConfig.sourceRect = CGRect(x: RectLeft, y: RectTop, width: RectWidth, height: RectHeight)
-                let stream = SCStream(filter: filter, configuration: newConfig, delegate: self.frameDelegate)
-                try stream.addStreamOutput(
-                    delegate,
-                    type: .screen,
-                    sampleHandlerQueue: .main
-                )
-                self.stream = stream
-            }
-
-            //try await self.stream?.updateConfiguration(newConfig)
-            try await self.stream?.startCapture()
-            infoMessages.append("Updated sourceRect to x:\(RectLeft), y:\(RectTop), w:\(RectWidth), h:\(RectHeight)")
-        } catch {
-            infoMessages.append("Failed to update sourceRect: \(error.localizedDescription)")
-        }
-         */
     }
-    func captureSliver(xPos: Int, width: Int = 6, height: Int = 400) async throws {
+    /* ******************************************************************
+     *********************  Capture Sliver ****************************
+     ********************************************************************/
+    func captureSliver(x: Int,y: Int , width: Int, height: Int) async throws {
+        //try await self.stream?.stopCapture()
         DispatchQueue.main.async {
             self.infoMessages.removeAll()
         }
@@ -179,10 +179,11 @@ class ScreenCaptureManager : ObservableObject {
             
             
             let streamConfig = SCStreamConfiguration()
-            
-            streamConfig.sourceRect = CGRect(x: xPos, y: 0, width: 6, height: 300) // ✅ Full screen
-            streamConfig.minimumFrameInterval = CMTime(value: 20, timescale: 60)
-            streamConfig.queueDepth = 2
+           
+//            streamConfig.sourceRect = CGRect(x: x, y: y, width: width, height: height) // ✅ Full screen
+//            setInfoSize(s: "captureSliver -- x: \(x), y: \(y), width: \(width), height: \(height)")
+//            streamConfig.minimumFrameInterval = CMTime(value: 20, timescale: 60)
+//            streamConfig.queueDepth = 1
             
             self.lm_streamConfig = streamConfig
         
@@ -193,44 +194,43 @@ class ScreenCaptureManager : ObservableObject {
                 y: RectTop,
                 width: RectWidth,
                 height: RectHeight,
-                shouldCrop: true
+                Crop: self.shouldCrop
             )
             self.frameDelegate = FrameCaptureDelegate(cropSettings: crop)
             
-            guard let frameDelegate = self.frameDelegate else { return }
-  
+            guard let frameDelegate = self.frameDelegate else {
+                print("❌ no valid frameDelegate")
+                return
+            }
+            
             let stream = SCStream(filter: filter, configuration: self.lm_streamConfig ?? streamConfig, delegate: frameDelegate)
         
             self.stream = stream
+            //frameDelegate.listener = self
             frameDelegate.onImage = { image in
-                print("Received sample buffer, converting to image...")
-//                let message = "lm_StreamConfig  x:\(lm_StreamConfig.sourceRect.origin.x), y:\(lm_StreamConfig.sourceRect.origin.y), w:\(lm_StreamConfig.sourceRect.size.width), h:\(lm_StreamConfig.sourceRect.size.height)"
-//                print(message)
-                
-                print("🖼 Captured Image Size: \(image.width) x \(image.height)")
-                
-                
-                self.capturedImage = image
-//                let cropRect = CGRect(x: self.RectLeft, y: self.RectTop, width: self.RectWidth, height: self.RectHeight)
-//                    if let cropped = image.cropping(to: cropRect) {
-//                        print("🖼 Cropped Size: \(cropped.width) x \(cropped.height)")
-//                        self.capturedImage = cropped
-//                    } else {
-//                        print("❌ Failed to crop image")
-//                    }
-                
-            }
 
+                let msg1 = "🖼 Captured Image Size: \(image.width) x \(image.height)"
+                print(msg1)
+                self.setInfo(msg: msg1)
+                self.setCaptureStatus(status: true)
+                self.setInfoSize(s: "freamDelegate.onImage ## width: \(image.width), height: \(image.height)")
+                self.capturedImage = image
+                let hasRed = self.containsRedPixels(in: image)
+                    DispatchQueue.main.async {
+                        self.redDetected = hasRed
+                    }
+            }
             do {
                 try stream.addStreamOutput(
                     frameDelegate,
                     type: .screen,
                     sampleHandlerQueue: .main
                 )
-                
-                print("✅ Successfully added FrameCaptureDelegate!")
+                //self.setCaptureStatus(status: true)
+                //print("✅ Successfully added FrameCaptureDelegate!")
             } catch {
-                print("❌ Failed to add FrameCaptureDelegate: \(error.localizedDescription)")
+                self.setCaptureStatus(status: false)
+                //print("❌ Failed to add FrameCaptureDelegate: \(error.localizedDescription)")
             }
         
             
@@ -265,10 +265,82 @@ class ScreenCaptureManager : ObservableObject {
         
         //        try await stream.startCapture()
     } //function
-    
+    private func containsRedPixels(in cgImage: CGImage) -> Bool {
+        guard let dataProvider = cgImage.dataProvider,
+              let pixelData = dataProvider.data else {
+            return false
+        }
+
+        let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
+        let width = cgImage.width
+        let height = cgImage.height
+        let bytesPerPixel = 4
+        let bytesPerRow = cgImage.bytesPerRow
+
+        for y in 0..<height {
+            for x in 0..<width {
+                let pixelIndex = y * bytesPerRow + x * bytesPerPixel
+                let r = data[pixelIndex]
+                let g = data[pixelIndex + 1]
+                let b = data[pixelIndex + 2]
+                let a = data[pixelIndex + 3]
+
+                // Simple "red-ish" logic: red is dominant and not transparent
+                if r > 0x75 && g < 0x15  && b < 0x15 && a > 0 {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+    func persistSettings() {
+        let config = AppConfig(
+            selectedTitle: self.selectedTitle,
+            rectLeft: self.RectLeft,
+            rectTop: self.RectTop,
+            rectWidth: self.RectWidth,
+            rectHeight: self.RectHeight
+        )
+        saveConfig(config)
+    }
+    func restoreSettings() {
+        if let config = loadConfig() {
+            selectedTitle = config.selectedTitle
+            RectLeft = config.rectLeft
+            RectTop = config.rectTop
+            RectWidth = config.rectWidth
+            RectHeight = config.rectHeight
+        }
+    }
+    private func saveConfig(_ config: AppConfig) {
+        do {
+            let data = try JSONEncoder().encode(config)
+            try data.write(to: configFileURL())
+            print("✅ Config saved.")
+        } catch {
+            print("❌ Failed to save config: \(error)")
+        }
+    }
+    private func loadConfig() -> AppConfig? {
+        do {
+            let data = try Data(contentsOf: configFileURL())
+            let config = try JSONDecoder().decode(AppConfig.self, from: data)
+            print("✅ Config loaded.")
+            return config
+        } catch {
+            print("⚠️ No config file or failed to load: \(error)")
+            return nil
+        }
+    }
 }
 
-
+//extension ScreenCaptureManager: FrameCaptureDelegateListener {
+//    func didDetectRedPixel() {
+//        print("🔊 Red pixel detected — play sound")
+//        NSSound(named: NSSound.Name("Submarine"))?.play()
+//    }
+//}
 
 
 
