@@ -30,7 +30,8 @@ class FrameCaptureDelegate: NSObject, SCStreamOutput, SCStreamDelegate {
         guard outputType == .screen,
               let pixelBuffer = sampleBuffer.imageBuffer else
         {
-            print("❌ No valid pixel buffer found")
+            print("❌outputType: \(outputType.rawValue)  No valid pixel buffer found❌")
+          
             return }
 
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)

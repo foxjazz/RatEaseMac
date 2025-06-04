@@ -33,7 +33,8 @@ class ScreenCaptureManager : ObservableObject {
     private var selectedWindow: SCWindow? = nil
     var stream: SCStream?
     var frameDelegate: FrameCaptureDelegate? = nil
-    
+    var lastCaptureTime: Date = Date()
+
     private var streamConfiguration : SCStreamConfiguration
     {
         
@@ -46,8 +47,9 @@ class ScreenCaptureManager : ObservableObject {
         // Configure audio capture.
         streamConfig.capturesAudio = isAudioCaptureEnabled
         streamConfig.excludesCurrentProcessAudio = isAppAudioExcluded
+        
         // Set the capture interval at 60 fps.
-        streamConfig.minimumFrameInterval = CMTime(value: 20, timescale: 60)
+        streamConfig.minimumFrameInterval = CMTimeMakeWithSeconds( 0.42, preferredTimescale: 600)
         streamConfig.queueDepth = 1
         return streamConfig
     }
@@ -102,6 +104,7 @@ class ScreenCaptureManager : ObservableObject {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let targetWindow = content.windows.first(where: { $0.title == selectedTitle }) else {
             DispatchQueue.main.async {
+                self.setCaptureStatus(status: false)
                 self.infoMessages.append("Error NoDisplay")
             }
             throw NSError(domain: "NoDisplay", code: 1)
@@ -122,7 +125,7 @@ class ScreenCaptureManager : ObservableObject {
             streamConfiguration.sourceRect = CGRect(x: x, y: y, width: width, height: height)
             setInfoSize(s: "updateSliver :: rect: x: \(x), y: \(y), width: \(width), height: \(height)")
             try await self.stream?.stopCapture()
-            setCaptureStatus(status: false)
+            self.setCaptureStatus(status: false)
 //            guard let fd = self.frameDelegate else {print ("Error on update"); return}
 //            fd.onImage = { image in
 //                    print("🖼 Updated Captured Image Size: \(image.width) x \(image.height)")
@@ -142,16 +145,35 @@ class ScreenCaptureManager : ObservableObject {
 //                sampleHandlerQueue: .main
 //            )
             try await self.stream?.updateConfiguration(streamConfiguration)
-            try await self.stream?.startCapture()
+            self.startCapturing()
            // try await self.captureSliver(x: x, y: y, width: width, height: height)
         }catch {return}
         
     }
+
+    func startCapturing() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            Task {
+                do {
+                    try await self.stream?.startCapture()
+                } catch {
+                    print("❌ Failed to start capture: \(error)")
+                }
+            }
+        }
+    }
+
+    private var isProcessingFrame = false
     /* ******************************************************************
      *********************  Capture Sliver ****************************
      ********************************************************************/
+    
     func captureSliver(x: Int,y: Int , width: Int, height: Int) async throws {
         //try await self.stream?.stopCapture()
+        if self.isProcessingFrame {
+            return
+        }
+        self.isProcessingFrame = true
         DispatchQueue.main.async {
             self.infoMessages.removeAll()
         }
@@ -199,7 +221,9 @@ class ScreenCaptureManager : ObservableObject {
             self.frameDelegate = FrameCaptureDelegate(cropSettings: crop)
             
             guard let frameDelegate = self.frameDelegate else {
+                self.setCaptureStatus(status: false)
                 print("❌ no valid frameDelegate")
+                self.resetFrameDelegate()
                 return
             }
             
@@ -208,29 +232,35 @@ class ScreenCaptureManager : ObservableObject {
             self.stream = stream
             //frameDelegate.listener = self
             frameDelegate.onImage = { image in
-
-                let msg1 = "🖼 Captured Image Size: \(image.width) x \(image.height)"
-                print(msg1)
-                self.setInfo(msg: msg1)
-                self.setCaptureStatus(status: true)
-                self.setInfoSize(s: "freamDelegate.onImage ## width: \(image.width), height: \(image.height)")
-                self.capturedImage = image
-                let hasRed = self.containsRedPixels(in: image)
+                autoreleasepool {
+                    self.lastCaptureTime = Date()
+                    let msg1 = "🖼 Captured Image Size: \(image.width) x \(image.height)"
+                    
+                    print(msg1)
+                    self.setInfo(msg: msg1)
+                    self.setCaptureStatus(status: true)
+                    self.setInfoSize(s: "freamDelegate.onImage ## width: \(image.width), height: \(image.height)")
+                    let hasRed = self.containsRedPixels(in: image)
                     DispatchQueue.main.async {
+                        self.capturedImage = image
                         self.redDetected = hasRed
                     }
+                }
             }
             do {
+                startMonitor()
                 try stream.addStreamOutput(
                     frameDelegate,
                     type: .screen,
                     sampleHandlerQueue: .main
                 )
+                
                 //self.setCaptureStatus(status: true)
                 //print("✅ Successfully added FrameCaptureDelegate!")
             } catch {
                 self.setCaptureStatus(status: false)
-                //print("❌ Failed to add FrameCaptureDelegate: \(error.localizedDescription)")
+                self.infoMessages.append("❌ Failed to add stream output")
+                self.resetFrameDelegate()
             }
         
             
@@ -239,6 +269,7 @@ class ScreenCaptureManager : ObservableObject {
                 self.infoMessages.append("Started capture for window: \(targetWindow.title ?? "no title here")")
                 let message = "WITH Rect:  x:\(self.lm_streamConfig?.sourceRect.origin.x ?? 0), y:\(self.lm_streamConfig?.sourceRect.origin.y ?? 0), w:\(self.lm_streamConfig?.sourceRect.size.width ?? 6), h:\(self.lm_streamConfig?.sourceRect.size.height ?? 700)"
                 self.infoMessages.append(message)
+                
                 // ✅ Add to list
             }
             do {
@@ -250,7 +281,8 @@ class ScreenCaptureManager : ObservableObject {
             }
             catch{
                 DispatchQueue.main.async {
-                    self.infoMessages.append("Failing to startCapture() \(targetWindow.title ?? "no title here")") // ✅ Add to list
+                    self.infoMessages.append("Failing to startCapture() \(targetWindow.title ?? "no title here")")
+                    self.resetFrameDelegate()
                 }
             }
                 // di
@@ -262,15 +294,26 @@ class ScreenCaptureManager : ObservableObject {
             }// dispatch
         } //catch
         
-        
+        self.isProcessingFrame = false
         //        try await stream.startCapture()
     } //function
+    
+    private var lastRedPixelTriggerTime: Date? = nil
+
     private func containsRedPixels(in cgImage: CGImage) -> Bool {
         guard let dataProvider = cgImage.dataProvider,
               let pixelData = dataProvider.data else {
             return false
         }
 
+//        let info = cgImage.bitmapInfo
+//        if info.contains(.byteOrder32Little) {
+//            print("Byte order: Little Endian (BGRA likely)")
+//        } else if info.contains(.byteOrder32Big) {
+//            print("Byte order: Big Endian (ARGB likely)")
+//        }
+       
+        
         let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
         let width = cgImage.width
         let height = cgImage.height
@@ -284,15 +327,51 @@ class ScreenCaptureManager : ObservableObject {
                 let g = data[pixelIndex + 1]
                 let b = data[pixelIndex + 2]
                 let a = data[pixelIndex + 3]
-
+                
+//                if r > 0x60 && g < 0x50 && b < 0x50 {
+//                    print("\(String(format: "0x%02X", r)),\(String(format: "0x%02X", g)),\(String(format: "0x%02X", b)),\(a)")
+//                }
                 // Simple "red-ish" logic: red is dominant and not transparent
-                if r > 0x75 && g < 0x15  && b < 0x15 && a > 0 {
+                if r > 0x5e && g < 0x20  && b < 0x20 && a > 0 {
+                    let now = Date()
+                        if let lastTime = lastRedPixelTriggerTime {
+                            if now.timeIntervalSince(lastTime) < 15 {
+                                return false  // Too soon
+                            }
+                        }
+                        lastRedPixelTriggerTime = now
                     return true
                 }
             }
         }
 
         return false
+    }
+    
+    func startMonitor() {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {[weak self] _ in
+     
+            let now = Date()
+            guard let lastCapTime = self?.lastCaptureTime else {return}
+            
+            let timeSinceLastCapture = now.timeIntervalSince(lastCapTime)
+
+            if timeSinceLastCapture > 1 {
+                DispatchQueue.main.async {
+                    // Frame hasn't updated in 10 seconds
+                    self?.handleCaptureTimeout()
+                }
+                } else {
+                    print("Capture still active.")
+                }
+            
+        }
+    }
+    func handleCaptureTimeout() {
+        setInfo(msg: "Capture timed out, resetting")
+        print("No frame update in 10s — taking action!")
+        self.resetFrameDelegate()
+        // Add your reset logic and/or notify status here
     }
     func persistSettings() {
         let config = AppConfig(
@@ -333,6 +412,37 @@ class ScreenCaptureManager : ObservableObject {
             return nil
         }
     }
+    private func resetFrameDelegate() {
+        print("🔁 Resetting frameDelegate due to error...")
+        setInfo(msg: "Attempting to reset capture.")
+        // Stop current capture if needed
+        Task {
+            
+            do {
+                try await self.stream?.stopCapture()
+            } catch {
+                print("❌ Failed to stop stream: \(error)")
+            }
+
+            self.stream = nil
+            self.frameDelegate = nil
+
+            let crop = CropSettings(
+                x: RectLeft,
+                y: RectTop,
+                width: RectWidth,
+                height: RectHeight,
+                Crop: self.shouldCrop
+            )
+
+            let newDelegate = FrameCaptureDelegate(cropSettings: crop)
+            self.frameDelegate = newDelegate
+            try await self.captureSliver(x: RectLeft, y: RectTop, width: RectWidth, height: RectHeight)
+            setInfo(msg: "✅ Capture call has reset successfully ✅")
+            print("✅ frameDelegate reset complete.")
+        }
+    }
+    
 }
 
 //extension ScreenCaptureManager: FrameCaptureDelegateListener {

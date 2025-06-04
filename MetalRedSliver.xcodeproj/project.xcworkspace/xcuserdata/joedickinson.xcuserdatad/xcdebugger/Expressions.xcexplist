@@ -3,6 +3,22 @@
    version = "1.0">
    <ContextStates>
       <ContextState
+         contextName = "ScreenCaptureManager.containsRedPixels(in:):ScreenCaptureManager.swift">
+         <PersistentStrings>
+            <PersistentString
+               value = "pixelIndex / 16">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "ScreenCaptureManager.containsRedPixels(in:):(null)">
+         <PersistentStrings>
+            <PersistentString
+               value = "r &gt; 0x59">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
          contextName = "closure #2 in ScreenCaptureManager.captureSliver(xPos:width:height:):ScreenCaptureManager.swift">
          <PersistentStrings>
             <PersistentString

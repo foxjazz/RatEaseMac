@@ -10,6 +10,7 @@ import SwiftData
 
 @main
 struct MetalRedSliverApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -31,3 +32,12 @@ struct MetalRedSliverApp: App {
     }
 }
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true // 👈 This makes the app quit when the window is closed
+    }
+}

@@ -34,6 +34,26 @@
 		EE1057782DCEBD58003E3D9C /* MetalCaptureView.bak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalCaptureView.bak.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EEE271092DF08AE10047409B /* Exceptions for "NotUsed" folder in "MetalRedSliver" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				CaptureEngine.bak,
+			);
+			target = EE10573F2DCEA7BB003E3D9C /* MetalRedSliver */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		EEE2710A2DF08AE10047409B /* Exceptions for "NotUsed" folder in "Compile Sources" phase from "MetalRedSliver" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = EE10573C2DCEA7BB003E3D9C /* Sources */;
+			membershipExceptions = (
+				CaptureEngine.bak,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EE1057422DCEA7BB003E3D9C /* MetalRedSliver */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -48,6 +68,15 @@
 		EE10575D2DCEA7BC003E3D9C /* MetalRedSliverUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MetalRedSliverUITests;
+			sourceTree = "<group>";
+		};
+		EEE271082DF08AD90047409B /* NotUsed */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EEE271092DF08AE10047409B /* Exceptions for "NotUsed" folder in "MetalRedSliver" target */,
+				EEE2710A2DF08AE10047409B /* Exceptions for "NotUsed" folder in "Compile Sources" phase from "MetalRedSliver" target */,
+			);
+			path = NotUsed;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -80,6 +109,7 @@
 		EE1057372DCEA7BB003E3D9C = {
 			isa = PBXGroup;
 			children = (
+				EEE271082DF08AD90047409B /* NotUsed */,
 				EE1057422DCEA7BB003E3D9C /* MetalRedSliver */,
 				EE1057532DCEA7BC003E3D9C /* MetalRedSliverTests */,
 				EE10575D2DCEA7BC003E3D9C /* MetalRedSliverUITests */,
@@ -115,6 +145,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				EE1057422DCEA7BB003E3D9C /* MetalRedSliver */,
+				EEE271082DF08AD90047409B /* NotUsed */,
 			);
 			name = MetalRedSliver;
 			packageProductDependencies = (
@@ -410,6 +441,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = RatEase;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -439,6 +472,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = RatEase;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

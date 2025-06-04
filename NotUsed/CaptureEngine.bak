@@ -31,20 +31,39 @@ class CaptureEngine: NSObject, @unchecked Sendable {
     private var streamOutput: CaptureEngineStreamOutput?
     private let videoSampleBufferQueue = DispatchQueue(label: "com.example.apple-samplecode.VideoSampleBufferQueue")
     private let audioSampleBufferQueue = DispatchQueue(label: "com.example.apple-samplecode.AudioSampleBufferQueue")
-    
+
+private var isResetting = false
     // Performs average and peak power calculations on the audio samples.
-   
+    func resetCapture(configuration: SCStreamConfiguration, filter: SCContentFilter) {
+        guard !isResetting else {return}
+        isResetting = true
+        Task {
+            await stopCapture()
+
+            // Clear state
+            self.stream = nil
+            self.streamOutput = nil
+
+            // Delay briefly to avoid immediate retry loops in case of persistent failure
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+            // Restart capture
+            _ = startCapture(configuration: configuration, filter: filter)
+        }
+    }
     
     // Store the the startCapture continuation, so that you can cancel it when you call stopCapture().
     private var continuation: AsyncThrowingStream<CapturedFrame, Error>.Continuation?
     
     /// - Tag: StartCapture
     func startCapture(configuration: SCStreamConfiguration, filter: SCContentFilter) -> AsyncThrowingStream<CapturedFrame, Error> {
+        
         AsyncThrowingStream<CapturedFrame, Error> { continuation in
             // The stream output object. Avoid reassigning it to a new object every time startCapture is called.
             let streamOutput = CaptureEngineStreamOutput(continuation: continuation)
             self.streamOutput = streamOutput
             streamOutput.capturedFrameHandler = { continuation.yield($0) }
+            self.continuation = continuation
             
             do {
                 stream = SCStream(filter: filter, configuration: configuration, delegate: streamOutput)
@@ -57,6 +76,7 @@ class CaptureEngine: NSObject, @unchecked Sendable {
                 continuation.finish(throwing: error)
             }
         }
+        
     }
     
     func stopCapture() async {
@@ -85,7 +105,8 @@ private class CaptureEngineStreamOutput: NSObject, SCStreamOutput, SCStreamDeleg
     
     var pcmBufferHandler: ((AVAudioPCMBuffer) -> Void)?
     var capturedFrameHandler: ((CapturedFrame) -> Void)?
-    
+    var onError: ((Error) -> Void)?
+
     // Store the  startCapture continuation, so you can cancel it if an error occurs.
     private var continuation: AsyncThrowingStream<CapturedFrame, Error>.Continuation?
     
@@ -152,6 +173,9 @@ private class CaptureEngineStreamOutput: NSObject, SCStreamOutput, SCStreamDeleg
     
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         continuation?.finish(throwing: error)
+        onError?(error)
+        
     }
+    
 }
 

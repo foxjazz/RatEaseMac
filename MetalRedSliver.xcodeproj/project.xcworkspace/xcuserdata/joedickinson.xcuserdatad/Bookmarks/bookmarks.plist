@@ -12,13 +12,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>210</string>
+					<string>234</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>209</string>
+					<string>233</string>
 					<key>Timestamp</key>
-					<string>768758991.268816</string>
+					<string>770748095.975419</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -41,9 +41,9 @@
             //frameDelegate.listener = self
 </string>
 				<key>trailing</key>
-				<string>
-                let msg1 = "🖼 Captured Image Size: \(image.width) x \(image.height)"
-                print(msg1)
+				<string>                autoreleasepool {
+                    self.lastCaptureTime = Date()
+                    let msg1 = "🖼 Captured Image Size: \(image.width) x \(image.height)"
 </string>
 			</dict>
 			<key>type</key>
@@ -57,13 +57,13 @@
 					<key>EndingColumnNumber</key>
 					<string>0</string>
 					<key>EndingLineNumber</key>
-					<string>232</string>
+					<string>261</string>
 					<key>StartingColumnNumber</key>
 					<string>0</string>
 					<key>StartingLineNumber</key>
-					<string>231</string>
+					<string>260</string>
 					<key>Timestamp</key>
-					<string>768758991.268797</string>
+					<string>770748095.9754</string>
 				</dict>
 				<key>rebasable-url</key>
 				<dict>
@@ -86,9 +86,9 @@
             } catch {
 </string>
 				<key>trailing</key>
-				<string>                //print("❌ Failed to add FrameCaptureDelegate: \(error.localizedDescription)")
+				<string>                self.infoMessages.append("❌ Failed to add stream output")
+                self.resetFrameDelegate()
             }
-        
 </string>
 			</dict>
 			<key>type</key>

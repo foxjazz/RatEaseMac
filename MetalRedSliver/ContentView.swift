@@ -153,6 +153,15 @@ struct ContentView: View {
                         captureManager.persistSettings()
                         
                     }
+                    Button("Clear settings"){
+                        captureManager.RectTop = 60
+                        captureManager.RectLeft = 60
+                        captureManager.RectWidth = 20
+                        captureManager.RectHeight = 700
+                        Task{
+                            try await captureManager.populateWindowTitles()
+                        }
+                    }
                     Button("crop = \(captureManager.shouldCrop ? "true" : "false")"){
                         captureManager.shouldCrop.toggle()
                     }
